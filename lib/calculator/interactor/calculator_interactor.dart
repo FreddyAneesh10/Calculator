@@ -1,16 +1,32 @@
 import '../operations/operation.dart';
-import '../services/result_formatter.dart';
+import '../operations/unary_operation.dart';
+import '../services/i_result_formatter.dart';
+import 'i_calculator_interactor.dart';
 
-class CalculatorInteractor {
+/// OCP Fix: [handleInput] no longer contains an if/else chain that must
+/// be edited to support new commands. Instead, a [_commandRegistry] maps
+/// each special token to a callback. Registering a new command (e.g. '%')
+/// only requires adding one entry — no existing logic is modified.
+///
+/// DIP Fix: Depends on [IResultFormatter] (abstraction), not the concrete
+/// [ResultFormatter]. Implements [ICalculatorInteractor] so the Presenter
+/// depends on this abstraction, not the concrete class.
+class CalculatorInteractor implements ICalculatorInteractor {
 
-  final ResultFormatter _formatter;
+  final IResultFormatter _formatter;
   final Map<String, Operation> _operations;
+  final Map<String, UnaryOperation> _unaryOperations;
 
   CalculatorInteractor({
     required Map<String, Operation> operations,
-    required ResultFormatter formatter,
+    required Map<String, UnaryOperation> unaryOperations,
+    required IResultFormatter formatter,
   })  : _operations = operations,
-        _formatter = formatter;
+        _unaryOperations = unaryOperations,
+        _formatter = formatter {
+    // OCP: build the command registry once at construction time.
+    _registerCommands();
+  }
 
   String _currentInput = '0';
   String _previousInput = '';
@@ -18,24 +34,50 @@ class CalculatorInteractor {
   String _equation = '';
   bool _shouldResetInput = false;
 
+  /// OCP: Maps each special input token to its handler.
+  /// To add a new command, register it here — nothing else changes.
+  late final Map<String, void Function()> _commandRegistry;
+
+  void _registerCommands() {
+    _commandRegistry = {
+      'C': _clear,
+      '=': _calculate,
+      '⌫': _backspace,
+    };
+  }
+
+  @override
   String get displayValue => _currentInput;
+
+  @override
   String get equation => _equation;
 
+  @override
   void handleInput(String input) {
-
-    if (input == 'C') {
-      _clear();
-    }
-    else if (input == '=') {
-      _calculate();
-    }
-    else if (_operations.containsKey(input)) {
+    // OCP: look up the command registry first.
+    final command = _commandRegistry[input];
+    if (command != null) {
+      command();
+    } else if (_unaryOperations.containsKey(input)) {
+      _executeUnaryOperation(input);
+    } else if (_operations.containsKey(input)) {
       _setOperator(input);
-    }
-    else {
+    } else {
       _appendNumber(input);
     }
+  }
 
+  void _executeUnaryOperation(String op) {
+    double value = double.parse(_currentInput);
+    UnaryOperation operation = _unaryOperations[op]!;
+    
+    double result = operation.execute(value);
+    
+    // Formatting the string to match standard scientific calculator view using polymorphism (OCP fix)
+    _equation = operation.formatEquation(_currentInput);
+    
+    _currentInput = _formatter.format(result);
+    _shouldResetInput = true;
   }
 
   void _calculate() {
@@ -49,7 +91,7 @@ class CalculatorInteractor {
 
     double result = operation.execute(num1, num2);
 
-    _equation = '$_previousInput $_operator $_currentInput =';
+    _equation = operation.formatEquation(_previousInput, _currentInput);
 
     _currentInput = _formatter.format(result);
 
@@ -63,7 +105,7 @@ class CalculatorInteractor {
 
     _operator = op;
     _previousInput = _currentInput;
-    _equation = '$_previousInput $_operator';
+    _equation = _operations[_operator]!.formatOngoingEquation(_previousInput);
     _shouldResetInput = true;
 
   }
@@ -73,16 +115,23 @@ class CalculatorInteractor {
     if (_shouldResetInput) {
       _currentInput = num;
       _shouldResetInput = false;
-    }
-    else {
+    } else {
       if (_currentInput == '0') {
         _currentInput = num;
-      }
-      else {
+      } else {
         _currentInput += num;
       }
     }
 
+  }
+
+  void _backspace() {
+    if (_shouldResetInput || _currentInput.length <= 1) {
+      _currentInput = '0';
+      _shouldResetInput = false;
+    } else {
+      _currentInput = _currentInput.substring(0, _currentInput.length - 1);
+    }
   }
 
   void _clear() {

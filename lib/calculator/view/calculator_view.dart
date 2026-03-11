@@ -106,15 +106,15 @@ class CalculatorView extends StatelessWidget {
                     top: false,
                     child: Column(
                       children: [
-                        _buildRow(['√', '()', '%', '÷'], opColor, textColor, isDark),
-                        _buildRow(['7', '8', '9', '×'], opColor, textColor, isDark),
-                        _buildRow(['4', '5', '6', '−'], opColor, textColor, isDark),
-                        _buildRow(['1', '2', '3', '+'], opColor, textColor, isDark),
+                        _buildRow([{'√': true}, {'()': true}, {'%': true}, {'÷': true}], opColor, textColor, isDark),
+                        _buildRow([{'7': false}, {'8': false}, {'9': false}, {'×': true}], opColor, textColor, isDark),
+                        _buildRow([{'4': false}, {'5': false}, {'6': false}, {'−': true}], opColor, textColor, isDark),
+                        _buildRow([{'1': false}, {'2': false}, {'3': false}, {'+': true}], opColor, textColor, isDark),
                         Row(
                           children: [
-                             _buildBtn('±', opColor, textColor, isDark),
-                             _buildBtn('0', opColor, textColor, isDark),
-                             _buildBtn(',', opColor, textColor, isDark),
+                             _buildBtn('±', false, opColor, textColor, isDark), // Not visually a blue operator
+                             _buildBtn('0', false, opColor, textColor, isDark),
+                             _buildBtn(',', false, opColor, textColor, isDark),
                              Expanded(
                                child: GestureDetector(
                                  onTap: () => presenter.onInputPressed('='),
@@ -140,14 +140,13 @@ class CalculatorView extends StatelessWidget {
     );
   }
 
-  Widget _buildRow(List<String> labels, Color opColor, Color textColor, bool isDark) {
+  Widget _buildRow(List<Map<String, bool>> buttons, Color opColor, Color textColor, bool isDark) {
     return Row(
-      children: labels.map((label) => _buildBtn(label, opColor, textColor, isDark)).toList(),
+      children: buttons.map((btn) => _buildBtn(btn.keys.first, btn.values.first, opColor, textColor, isDark)).toList(),
     );
   }
 
-  Widget _buildBtn(String text, Color opColor, Color textColor, bool isDark) {
-    bool isOp = ['÷', '×', '−', '+', '√', '()', '%'].contains(text);
+  Widget _buildBtn(String text, bool isOp, Color opColor, Color textColor, bool isDark) {
     Color btnTextColor = isOp ? opColor : textColor;
     
     return Expanded(

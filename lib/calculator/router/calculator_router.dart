@@ -10,6 +10,11 @@ import '../operations/multiply_operation.dart';
 import '../operations/divide_operation.dart';
 import '../operations/operation.dart';
 
+import '../operations/square_root_operation.dart';
+import '../operations/percent_operation.dart';
+import '../operations/negate_operation.dart';
+import '../operations/unary_operation.dart';
+
 import '../services/result_formatter.dart';
 
 class CalculatorRouter {
@@ -23,10 +28,17 @@ class CalculatorRouter {
       '÷': DivideOperation(),
     };
 
+    final unaryOperations = <String, UnaryOperation>{
+      '√': SquareRootOperation(),
+      '%': PercentOperation(),
+      '±': NegateOperation(),
+    };
+
     final formatter = ResultFormatter();
 
     final interactor = CalculatorInteractor(
       operations: operations,
+      unaryOperations: unaryOperations,
       formatter: formatter,
     );
 
